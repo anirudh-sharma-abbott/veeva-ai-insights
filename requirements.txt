@@ -11,3 +11,5 @@ plotly
 openai
 xgboost
 numpy
+datetime
+scipy

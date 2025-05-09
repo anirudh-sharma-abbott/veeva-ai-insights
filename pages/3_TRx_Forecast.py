@@ -5,6 +5,10 @@ import plotly.graph_objects as go
 
 st.set_page_config(page_title="TRx/NBRx Forecasting", layout="wide")
 st.title("📈 TRx/NBRx Forecasting (Prophet + Plotly)")
+st.markdown(
+    "*Forecasting prescription trends helps identify future HCP behavior, enabling proactive sales planning. We use Prophet by Meta – a robust time-series forecasting model that handles seasonality, trends, and holiday effects with minimal manual tuning.*"
+)
+
 
 @st.cache_data
 def load_data():
