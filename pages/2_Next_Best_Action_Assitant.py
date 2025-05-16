@@ -167,3 +167,58 @@ st.info("""
 This assistant uses GPT-4 and business logic to generate AI-powered decisions for sales reps. 
 It applies thresholds (like conversion score and recent interaction) to guide whether an in-person call, sample drop, or coaching session should be taken this week — and provides rationale for each.
 """)
+
+
+
+import plotly.graph_objects as go
+
+# --- Chatbot Section ---
+st.markdown("---")
+st.markdown("### 💬 Ask the Assistant")
+st.caption("Chat with your AI rep assistant about this HCP. Try: *'Show me TRx trends'* or *'When was the last call?'*")
+
+# --- Initialize session state ---
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# --- Chat input ---
+user_input = st.chat_input("Type your question...")
+
+# --- Display messages ---
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# --- Handle new user message ---
+if user_input:
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.markdown(user_input)
+
+    # --- Simulate AI reply ---
+    with st.chat_message("assistant"):
+        if "trend" in user_input.lower():
+            st.markdown("Here is the TRx vs NBRx trend for this HCP:")
+
+            # Create time series dummy data (replace with real history if available)
+            dates = pd.date_range(end=datetime.now(), periods=6, freq="M")
+            trxs = [int(trxs_last_month * (0.9 + 0.05*i)) for i in range(6)]
+            nbrxs = [int(nbrxs_last_month * (0.85 + 0.04*i)) for i in range(6)]
+
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=dates, y=trxs, mode="lines+markers", name="TRx"))
+            fig.add_trace(go.Scatter(x=dates, y=nbrxs, mode="lines+markers", name="NBRx"))
+            fig.update_layout(title="TRx vs NBRx Trend", xaxis_title="Month", yaxis_title="Scripts")
+            st.plotly_chart(fig, use_container_width=True)
+
+            ai_reply = "📈 TRx and NBRx have shown a steady trend. Consider a follow-up if last call was over 3 weeks ago."
+        
+        elif "last call" in user_input.lower():
+            days = hcp_row['days_since_last_call']
+            ai_reply = f"📅 Last call was **{days} days ago**. Re-engagement is recommended if over 21 days."
+        
+        else:
+            ai_reply = f"🤖 I'm still learning to understand this question. Try asking about trends, segment, or last call."
+
+        st.markdown(ai_reply)
+        st.session_state.messages.append({"role": "assistant", "content": ai_reply})

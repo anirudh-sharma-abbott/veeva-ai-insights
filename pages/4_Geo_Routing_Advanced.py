@@ -16,10 +16,19 @@ GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 # --- Cached Data Loaders ---
 @st.cache_data
 def load_data():
+    # df = pd.read_csv("data/bay_area_providers_routing.csv")
+    # df["urgency_score"] = df.get("Overall Rating", 1).fillna(0)
+    # df = df.sort_values("urgency_score", ascending=False).head(20).reset_index(drop=True)
+    # return df
     df = pd.read_csv("data/bay_area_providers_routing.csv")
     df["urgency_score"] = df.get("Overall Rating", 1).fillna(0)
     df = df.sort_values("urgency_score", ascending=False).head(20).reset_index(drop=True)
+
+    # Merge NBA predictions
+    nba_predictions = pd.read_csv("data/nba_predictions.csv")
+    df = df.merge(nba_predictions, on=["Provider Name", "ZIP Code"], how="left")
     return df
+
 
 @st.cache_data
 def get_distance_matrix(locations, batch_size=10):
@@ -192,6 +201,108 @@ for i in range(len(day_df)):
         "Distance from Previous (miles)": round(prev_dist, 2)
     })
 st.dataframe(pd.DataFrame(route_rows), use_container_width=True)
+
+
+st.markdown("---")
+st.subheader("🧠 Next Best Action (NBA) – Custom Route Builder")
+
+use_nba_mode = st.checkbox("🔄 Plan route based on selected accounts (Next Best Action)")
+
+if use_nba_mode:
+    st.info("Select 2 or more accounts flagged as high priority by the NBA assistant (conversion_score > 0.75).")
+
+    # Filter high conversion score accounts
+    nba_df = df[df["conversion_score"] > 0.75].copy()
+    nba_df["label"] = nba_df["Provider Name"] + " — " + nba_df["City/Town"]
+
+    selected_labels = st.multiselect(
+        "Select accounts for real-time route optimization:",
+        options=nba_df["label"].tolist()
+    )
+
+    if len(selected_labels) >= 2:
+        selected_rows = nba_df[nba_df["label"].isin(selected_labels)].reset_index(drop=True)
+
+        # Distance & TSP Optimization
+        nba_locations = list(zip(selected_rows["Latitude"], selected_rows["Longitude"]))
+        nba_distance_matrix = get_distance_matrix(nba_locations)
+        nba_route_order = solve_tsp_nearest_neighbor(nba_distance_matrix)
+        selected_rows = selected_rows.iloc[nba_route_order].reset_index(drop=True)
+
+        # Map Setup
+        min_lat, max_lat = selected_rows["Latitude"].min(), selected_rows["Latitude"].max()
+        min_lon, max_lon = selected_rows["Longitude"].min(), selected_rows["Longitude"].max()
+        center_lat, center_lon = selected_rows["Latitude"].mean(), selected_rows["Longitude"].mean()
+
+        m = folium.Map(location=[center_lat, center_lon], zoom_start=12, tiles="OpenStreetMap") if min_lat == max_lat else folium.Map(tiles="OpenStreetMap")
+        if min_lat != max_lat:
+            m.fit_bounds([[min_lat, min_lon], [max_lat, max_lon]])
+
+        marker_cluster = MarkerCluster().add_to(m)
+        for idx, row in selected_rows.iterrows():
+            popup_html = (
+                f"<b>{row['Provider Name']}</b><br>"
+                f"Address: {row['Provider Address']}, {row['City/Town']}<br>"
+                f"Rating: {row['urgency_score']}<br>"
+                f"Conversion Score: {row['conversion_score']}<br>"
+                f"Beds: {row['Number of Certified Beds']}<br>"
+                f"Residents/day: {row['Average Number of Residents per Day']}<br>"
+                f"<a href='https://www.google.com/maps/search/?api=1&query={row['Latitude']},{row['Longitude']}' target='_blank'>Open in Google Maps</a>"
+            )
+
+            if idx == 0:
+                icon = folium.Icon(color='green', icon='play', prefix='fa')
+                tooltip = f"🟢 START: {row['Provider Name']}"
+            elif idx == len(selected_rows) - 1:
+                icon = folium.Icon(color='red', icon='stop', prefix='fa')
+                tooltip = f"🔴 END: {row['Provider Name']}"
+            else:
+                icon = folium.Icon(color='blue')
+                tooltip = row["Provider Name"]
+
+            folium.Marker(
+                location=[row["Latitude"], row["Longitude"]],
+                popup=folium.Popup(popup_html, max_width=300),
+                tooltip=tooltip,
+                icon=icon
+            ).add_to(marker_cluster)
+
+        # Draw route paths
+        for i in range(len(selected_rows) - 1):
+            start_latlon = (selected_rows.loc[i, "Latitude"], selected_rows.loc[i, "Longitude"])
+            end_latlon = (selected_rows.loc[i + 1, "Latitude"], selected_rows.loc[i + 1, "Longitude"])
+            decoded_path = get_road_route(start_latlon, end_latlon)
+            if decoded_path:
+                folium.PolyLine(decoded_path, color="orange", weight=4, opacity=0.8).add_to(m)
+            else:
+                st.warning(f"No route found between: {selected_rows.loc[i, 'Provider Name']} ➡️ {selected_rows.loc[i + 1, 'Provider Name']}")
+
+        # Show map
+        st.subheader("🗺️ NBA-Driven Real-Time Route")
+        st_folium(m, width=1100, height=600)
+
+        # Total Distance
+        total_distance = sum([
+            nba_distance_matrix[nba_route_order[i]][nba_route_order[i+1]] for i in range(len(nba_route_order) - 1)
+        ])
+        st.success(f"**Total Distance Traveled:** {total_distance:.2f} miles")
+
+        # Step-by-Step Table
+        st.markdown("## 📍 Step-by-Step Route Breakdown")
+        route_rows = []
+        for i in range(len(selected_rows)):
+            row = selected_rows.iloc[i]
+            prev_dist = 0 if i == 0 else nba_distance_matrix[nba_route_order[i-1]][nba_route_order[i]]
+            route_rows.append({
+                "Stop #": i + 1,
+                "Provider Name": row["Provider Name"],
+                "Address": f"{row['Provider Address']}, {row['City/Town']}, {row['State']} {row['ZIP Code']}",
+                "Distance from Previous (miles)": round(prev_dist, 2)
+            })
+        st.dataframe(pd.DataFrame(route_rows), use_container_width=True)
+    else:
+        st.warning("⚠️ Please select at least 2 accounts to build an optimized route.")
+
 
 # Explanation Panel
 with st.expander("ℹ️ How Routes Are Optimized"):

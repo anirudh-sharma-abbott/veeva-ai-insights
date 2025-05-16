@@ -10,7 +10,7 @@ with col_logo:
     logo = Image.open("static/abbott_logo.jpg")  # Update path if needed
     st.image(logo, width=100)
 with col_title:
-    st.markdown("<h1 style='margin-bottom:0;'>Veeva AI Insights Dashboard</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='margin-bottom:0;'>Abbott CRM AI Insights Dashboard</h1>", unsafe_allow_html=True)
     st.markdown("<h4 style='margin-top:0; color: gray;'>AI-Powered Decision Support for Field Excellence</h4>", unsafe_allow_html=True)
 
 st.markdown("<hr>", unsafe_allow_html=True)
@@ -48,6 +48,16 @@ with col4:
     • Route planning with real-road distances (Google Maps API)  
     • Prioritization via urgency scores and TSP heuristics  
     • Minimizes travel, maximizes field efficiency  
+    """)
+
+# --- NEW Chatbot Section ---
+col5, _ = st.columns([1, 1])
+with col5:
+    st.subheader("Next Best Action Chatbot (New)")
+    st.markdown("""
+    • Unified chat interface powered by GPT-4  
+    • Understands open-ended questions  
+    • Recommends actions, shows trends, and simulates agentic decisions  
     """)
 
 st.markdown("<hr>", unsafe_allow_html=True)
