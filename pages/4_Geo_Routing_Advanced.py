@@ -92,7 +92,7 @@ def solve_tsp_nearest_neighbor(matrix):
 
 # --- Streamlit UI ---
 st.set_page_config(layout="wide")
-st.title("🚗 Optimized Facility Route with Real Road Paths")
+st.title("Optimized Facility Route with Real Road Paths")
 st.markdown(
     "*Data sourced from [CMS](https://data.cms.gov/), filtered for Bay Area nursing facilities. "
     "We cluster providers using KMeans into 4 visit groups (days), then optimize daily visit routes "
@@ -189,7 +189,7 @@ st.success(f"**Total Distance Traveled:** {total_distance:.2f} miles")
 st.download_button("📥 Download Route CSV", data=day_df.to_csv(index=False), file_name="optimized_route.csv")
 
 # Step-by-Step Table
-st.markdown("## 📍 Step-by-Step Route Breakdown")
+st.markdown("## Step-by-Step Route Breakdown")
 route_rows = []
 for i in range(len(day_df)):
     row = day_df.iloc[i]
@@ -204,7 +204,7 @@ st.dataframe(pd.DataFrame(route_rows), use_container_width=True)
 
 
 st.markdown("---")
-st.subheader("🧠 Next Best Action (NBA) – Custom Route Builder")
+st.subheader("Next Best Action (NBA) – Custom Route Builder")
 
 use_nba_mode = st.checkbox("🔄 Plan route based on selected accounts (Next Best Action)")
 
@@ -288,7 +288,7 @@ if use_nba_mode:
         st.success(f"**Total Distance Traveled:** {total_distance:.2f} miles")
 
         # Step-by-Step Table
-        st.markdown("## 📍 Step-by-Step Route Breakdown")
+        st.markdown("## Step-by-Step Route Breakdown")
         route_rows = []
         for i in range(len(selected_rows)):
             row = selected_rows.iloc[i]
